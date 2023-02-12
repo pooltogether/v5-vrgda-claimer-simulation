@@ -69,18 +69,20 @@ const command = async function (options) {
 
     function computeMaxProfitableClaimCount(gasPrice) {
         const remaining = count - sold
+        let chunkSize = Math.round(remaining / 100)
         let profit = 0;
         let claimCount = 0;
         let cost = 0;
         let revenue = 0;
         // const i = 10
-        for (let i = 1; i < remaining; i++) {
-            let currentCost = computeCost(i, gasPrice)
-            let currentRevenue = computeRevenue(i, gasPrice)
+        for (let i = 1; i < 100; i++) {
+            let count = i*chunkSize
+            let currentCost = computeCost(count, gasPrice)
+            let currentRevenue = computeRevenue(count, gasPrice)
             let currentProfit = currentRevenue - currentCost
             if (currentProfit > profit) {
                 profit = currentProfit
-                claimCount = i
+                claimCount = count
                 cost = currentCost
                 revenue = currentRevenue
             }
@@ -124,7 +126,7 @@ program.option('-c, --count <number>', 'The number of claims', 2000)
 program.option('-d, --decayPercent <number>', 'The percentage rate of price change per unit time', 1.5)
 program.option('-t, --targetPrice <number>', 'The target price', 0.001)
 program.option('-cg, --claimGas <number>', 'The gas usage of each claim transaction', 200_000)
-program.option('-m, --minimumProfit <number>', 'The minimum claim profit in ether', 0.01)
+program.option('-m, --minimumProfit <number>', 'The minimum claim profit in ether', 0.3)
 program.requiredOption('-gf, --gasFile <filepath>', 'CSV to use for gas prices, where each row is <gas gwei integer>')
 
 program.action(command)
