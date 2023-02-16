@@ -24,7 +24,7 @@ const command = async function (options) {
         createReadStream(options.gasFile)
         .pipe(parse({ delimiter: ",", from_line: 2 }))
         .on("data", function (row) {
-            data.push(parseInt(row[0]))
+            data.push(parseFloat(row[0]))
         })
         .on("end", function () {
             resolve(data)
@@ -34,7 +34,8 @@ const command = async function (options) {
     const decayConstant = Math.log(parseFloat(options.decayPercent))
     const targetPrice = parseFloat(options.targetPrice)
     const count = parseInt(options.count)
-    const linearVrgdaPerTimeUnit = count / (0.9*gasPrices.length)
+    const fraction = parseFloat(options.fraction)
+    const linearVrgdaPerTimeUnit = count / (fraction*gasPrices.length)
     const minimumProfit = parseEther(''+options.minimumProfit)
     const claimGas = parseInt(options.claimGas)
 
@@ -54,9 +55,10 @@ const command = async function (options) {
     let currentTime = 0
 
     function computeCost(numberOfClaims, gasPrice) {
-        let totalGas = numberOfClaims * claimGas
-        // console.log(`totalGas: ${totalGas} for ${numberOfClaims}`)
-        return toBigInt(totalGas)*parseUnits(''+gasPrice, 'gwei')
+        const totalGas = numberOfClaims * claimGas
+        const gasPriceWei = parseUnits(''+gasPrice, 'gwei') 
+        // console.log(`totalGas: ${totalGas} for ${numberOfClaims}, with gas price: ${gasPriceWei}`)
+        return toBigInt(totalGas)*gasPriceWei
     }
 
     function computeRevenue(numberOfClaims) {
@@ -69,7 +71,7 @@ const command = async function (options) {
 
     function computeMaxProfitableClaimCount(gasPrice) {
         const remaining = count - sold
-        let chunkSize = Math.round(remaining / 100)
+        let chunkSize = parseInt(remaining / 100)
         let profit = 0;
         let claimCount = 0;
         let cost = 0;
@@ -101,7 +103,7 @@ const command = async function (options) {
         const [claimCount, profit, cost, revenue] = computeMaxProfitableClaimCount(gasPrice)
         // log(`check: ${claimCount}, profit: ${formatEther(profit)}, cost: ${formatEther(cost)}`)
         if (claimCount > 0 && profit > minimumProfit) {
-            console.log(chalk.dim(`@${currentTime}: Bought ${claimCount} with profit ${formatEther(profit)} and cost per claim: ${formatEther(revenue / BigInt(claimCount))}`))
+            console.log(chalk.dim(`@${currentTime}: Claimed ${claimCount} with profit ${formatEther(profit)} after cost of ${formatEther(cost)} with cost per claim: ${formatEther(revenue / BigInt(claimCount))}`))
             claimHistory.push({
                 time: currentTime,
                 count: claimCount,
@@ -119,14 +121,17 @@ const command = async function (options) {
 
     console.log(chalk.green(`Done! sold ${sold} out of ${options.count}`))
 
+    console.log(chalk.cyan(`Normal claim gas cost (at time 0): ${formatEther(BigInt(claimGas) * parseUnits(''+gasPrices[0], 'gwei'))}`))
+
 }
 
+program.option('-f, --fraction <number>', 'Fraction of the duration that tickets must be claimed by', 0.7)
 program.option('-v, --verbosity', 'Verbose logging', false)
 program.option('-c, --count <number>', 'The number of claims', 2000)
-program.option('-d, --decayPercent <number>', 'The percentage rate of price change per unit time', 1.5)
-program.option('-t, --targetPrice <number>', 'The target price', 0.001)
+program.option('-d, --decayPercent <number>', 'The percentage rate of price change per unit time', 1.1)
+program.option('-t, --targetPrice <number>', 'The target price', 0.00000001)
 program.option('-cg, --claimGas <number>', 'The gas usage of each claim transaction', 200_000)
-program.option('-m, --minimumProfit <number>', 'The minimum claim profit in ether', 0.3)
+program.option('-m, --minimumProfit <number>', 'The minimum claim profit in ether', 0.001)
 program.requiredOption('-gf, --gasFile <filepath>', 'CSV to use for gas prices, where each row is <gas gwei integer>')
 
 program.action(command)
