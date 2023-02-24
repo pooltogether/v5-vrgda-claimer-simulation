@@ -71,13 +71,19 @@ const command = async function (options) {
 
     function computeMaxProfitableClaimCount(gasPrice) {
         const remaining = count - sold
-        let chunkSize = parseInt(remaining / 100)
+        let chunkSize
+        let iterations = 100
+        if (remaining < 100) {
+            chunkSize = 1
+            iterations = remaining
+        } else {
+            chunkSize = parseInt(remaining / 100)
+        }
         let profit = 0;
         let claimCount = 0;
         let cost = 0;
         let revenue = 0;
-        // const i = 10
-        for (let i = 1; i < 100; i++) {
+        for (let i = 1; i <= iterations; i++) {
             let count = i*chunkSize
             let currentCost = computeCost(count, gasPrice)
             let currentRevenue = computeRevenue(count, gasPrice)
@@ -101,7 +107,7 @@ const command = async function (options) {
         logv(`Checking @${currentTime} sold: ${sold}, gasPrice: ${gasPrice} currentPrice: ${currentPrice}`)
 
         const [claimCount, profit, cost, revenue] = computeMaxProfitableClaimCount(gasPrice)
-        // log(`check: ${claimCount}, profit: ${formatEther(profit)}, cost: ${formatEther(cost)}`)
+        // log(`check: ${claimCount}, reamining: ${count - sold} profit: ${formatEther(profit)}, cost: ${formatEther(cost)}`)
         if (claimCount > 0 && profit > minimumProfit) {
             console.log(chalk.dim(`@${currentTime}: Claimed ${claimCount} with profit ${formatEther(profit)} after cost of ${formatEther(cost)} with cost per claim: ${formatEther(revenue / BigInt(claimCount))}`))
             claimHistory.push({
@@ -125,10 +131,10 @@ const command = async function (options) {
 
 }
 
-program.option('-f, --fraction <number>', 'Fraction of the duration that tickets must be claimed by', 0.7)
+program.option('-f, --fraction <number>', 'Fraction of the duration that tickets must be claimed by', 0.5)
 program.option('-v, --verbosity', 'Verbose logging', false)
 program.option('-c, --count <number>', 'The number of claims', 2000)
-program.option('-d, --decayPercent <number>', 'The percentage rate of price change per unit time', 1.1)
+program.option('-d, --decayPercent <number>', 'The percentage rate of price change per unit time', 1.3)
 program.option('-t, --targetPrice <number>', 'The target price', 0.00000001)
 program.option('-cg, --claimGas <number>', 'The gas usage of each claim transaction', 200_000)
 program.option('-m, --minimumProfit <number>', 'The minimum claim profit in ether', 0.001)
